@@ -10,11 +10,13 @@
 #define PTRCHECK(pointer, msg) if((pointer) == NULL) {printf(msg);printf("\n");exit(2);}
 #define BUFSIZE 4096
 char buf[BUFSIZE];
+int path_max;
 
 char **parse_args(char *cmd, int *argc);
 void free_strs(char **strs, int len);
 int split_cmds(char *buf, int n, char ***cmds, int *m);
 void run_cmds(char **cmds, int m);
+int run_buildin_cmd(char *cmds);
 
 int split_cmds(char *buf, int n, char ***cmds, int *m) {
     int i, j;
@@ -37,9 +39,35 @@ int split_cmds(char *buf, int n, char ***cmds, int *m) {
     }
     return 0;
 }
+int run_buildin_cmd(char *cmd) {
+    int argc;
+    char **argv = parse_args(cmd, &argc);
+    int ret = 0;
+    if (strcmp(argv[0], "exit") == 0) {
+        exit(0);
+    } else if (strcmp(argv[0], "pwd") == 0) {
+        char *path = (char *)malloc((path_max+1) * sizeof(char));
+        getcwd(path, path_max);
+        printf("%s\n", path);
+        free(path);
+        ret = 1;
+    } else if (strcmp(argv[0], "cd") == 0) {
+        char *dir = argc >= 2 ? argv[1] : getenv("HOME");
+        if(chdir(dir) == -1) {
+            perror("chdir");
+        }
+        ret = 1;
+    }
+    free_strs(argv, argc);
+    return ret;
+}
+
 void run_cmds(char **cmds, int m) {
     int i;
     int fd[50][2];
+    if (m == 1 && run_buildin_cmd(cmds[0])) {
+        return;
+    }
     for(i = 0; i < m; i++) {
         int pid;
         if(i < m-1) {
@@ -135,10 +163,13 @@ char **parse_args(char *cmd, int *argc) {
     return argv;
 }
 
+
+
 int main() {
     buf[0] = '\0';
     char **cmds = NULL;
     int m;
+    path_max = fpathconf(0, _PC_PATH_MAX);
     while(1) {
         int n;
         CHECKED(write(STDOUT_FILENO, "mysh>", 5), "write commend");
@@ -146,7 +177,6 @@ int main() {
         if (n == 0) exit(0);
         buf[--n] = '\0';
         if(strlen(buf)==0) continue;
-        if(strcmp(buf, "exit") == 0) break;
         if(split_cmds(buf, n, &cmds, &m) < 0) {
             printf("cannot parse the commend\n");
             continue;
