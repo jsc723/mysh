@@ -2,6 +2,13 @@
 - run commands
 - redirect stdin and stdout
 - pipe
+- run in background using `&`
+- basic jobs control
+- buildin commands
+    - cd
+    - pwd
+    - exit
+    - jobs
 
 # Build
 ```
